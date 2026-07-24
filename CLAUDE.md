@@ -93,6 +93,7 @@ openspec/              spec-driven workflow artifacts (proposals, designs, tasks
 
 ### Control — `src/tools/control.ts` (PHYSICAL ACTION)
 - `start_zone`, `stop_zone`, `start_all_zones`, `stop_all_zones`
+- `list_weather_stations`, `add_weather_station`, `add_virtual_weather_station`, `remove_weather_station` — the weather source behind the watering triggers. Mutations return bare Boolean, so failures map to mutation_error explicitly. Observed live: `add_virtual_weather_station` returns true without attaching anything when the account's station slot is already full, so re-read the list to confirm.
 - `suspend_zone`, `resume_zone`, `suspend_all_zones`, `resume_all_zones`
 
 ### Scheduling — `src/tools/scheduling.ts` (reads + PHYSICAL ACTION writes)
