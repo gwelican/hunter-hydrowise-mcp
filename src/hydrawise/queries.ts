@@ -999,7 +999,7 @@ export interface AdvancedProgramRead {
 export const CONDITIONAL_WATERING_ADJUSTMENTS_QUERY = /* GraphQL */ `
   query ConditionalWateringAdjustments($controllerId: Int!) {
     controller(controllerId: $controllerId) {
-      programs(includeZoneSpecific: false) {
+      programs(includeZoneSpecific: true) {
         __typename
         id
         ... on StandardProgram {

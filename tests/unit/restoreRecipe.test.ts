@@ -652,15 +652,15 @@ describe('buildRestoreCaveats', () => {
               { id: 18, label: '70%+ chance of rain' },
             ],
           },
-          // Advanced entries must be skipped by the aggregation (their
-          // schedule_adjustment_ids live in a different shape).
-          { id: 777, name: 'Adv', program_type: 'Advanced' },
+          // Advanced entries carry the same top-level field and must be
+          // aggregated too (Codex round-2 finding).
+          { id: 777, name: 'Adv', program_type: 'Advanced', schedule_adjustment_ids: [21] },
         ],
       }),
     );
     const caveat = caveats.find((c) => c.includes('reusable schedule_adjustment_ids'));
     expect(caveat).toBeDefined();
-    expect(caveat).toContain('[16, 17, 18]');
+    expect(caveat).toContain('[16, 17, 18, 21]');
     // Strengthened wording (issue #11 phase 2): distinguishes removed (loud) from
     // redefined (silent) and points the restorer at the label-comparison workflow.
     expect(caveat).toContain('CHANGED');

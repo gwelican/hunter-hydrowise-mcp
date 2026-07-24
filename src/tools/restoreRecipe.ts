@@ -204,16 +204,20 @@ export function buildRestoreCaveats(snapshot: SnapshotForRecipe): string[] {
     for (const id of z.settings?.schedule_adjustment_ids ?? []) scheduleAdjustmentIds.add(id);
   }
   for (const p of c.programs) {
-    if (p.program_type !== 'Standard') continue;
-    const sp = p as unknown as SnapshotStandardProgram;
-    for (const id of sp.schedule_adjustment_ids ?? []) scheduleAdjustmentIds.add(id);
+    // Both serializeStandardProgram and serializeAdvancedProgram emit top-level
+    // schedule_adjustment_ids, so aggregate every program subtype — Advanced
+    // controllers carry the same silent-redefinition risk (zone-level ids are
+    // unreadable there, so programs are the only capture point).
+    const ids = (p as { schedule_adjustment_ids?: unknown }).schedule_adjustment_ids;
+    if (!Array.isArray(ids)) continue;
+    for (const id of ids) if (typeof id === 'number') scheduleAdjustmentIds.add(id);
   }
   if (scheduleAdjustmentIds.size > 0) {
     const idList = Array.from(scheduleAdjustmentIds)
       .sort((a, b) => a - b)
       .join(', ');
     caveats.push(
-      `Snapshot references reusable schedule_adjustment_ids: [${idList}] (on zones and/or Standard programs). These are account-managed with no exposed CRUD, and the ids are opaque: an id that was removed makes the restore fail loudly, but an id whose definition CHANGED since capture restores silently wrong behavior. Programs in this snapshot carry schedule_adjustments {id, label} pairs and the controller carries watering_adjustment_catalog — before applying, call list_watering_adjustments on the target controller and compare id + label + applicable_scheduling_method against the snapshot's (the same label can appear under different ids for different scheduling methods); investigate any mismatch before restoring.`,
+      `Snapshot references reusable schedule_adjustment_ids: [${idList}] (on zones and/or programs). These are account-managed with no exposed CRUD, and the ids are opaque: an id that was removed makes the restore fail loudly, but an id whose definition CHANGED since capture restores silently wrong behavior. Programs in this snapshot carry schedule_adjustments {id, label} pairs and the controller carries watering_adjustment_catalog — before applying, call list_watering_adjustments on the target controller and compare id + label + applicable_scheduling_method against the snapshot's (the same label can appear under different ids for different scheduling methods); investigate any mismatch before restoring.`,
     );
   }
 
