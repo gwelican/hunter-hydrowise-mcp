@@ -303,6 +303,25 @@ describe('dump_controller_snapshot', () => {
     expect(resp.result?.content[0]?.text).toMatch(/^api_error: Snapshot integrity violation/);
   });
 
+  it('degrades to watering_adjustment_catalog: [] (does NOT fail the snapshot) when the catalog fetch errors', async () => {
+    // The v9 catalog is a restore-verification convenience on an account-scoped path that
+    // may be gated on some tiers. A catalog error must NOT take down the whole snapshot —
+    // it degrades to [], mirroring the subscription-gated notes fallback.
+    const app = makeApp({
+      getWateringAdjustmentCatalog: async () => {
+        throw new HydrawiseAPIError('Feature is not available under your subscription.');
+      },
+    });
+    const resp = await callTool(app, 'dump_controller_snapshot', { controller_id: 317416 });
+    expect(resp.result?.isError).toBeFalsy();
+    const snap = JSON.parse(resp.result!.content[0]!.text) as {
+      snapshot_version: number;
+      controller: { watering_adjustment_catalog: unknown[] };
+    };
+    expect(snap.snapshot_version).toBe(9);
+    expect(snap.controller.watering_adjustment_catalog).toEqual([]);
+  });
+
   it('program_type discriminator is consistent between thin entries and inlined details', async () => {
     // Two programs returned by list_programs: one Standard, one Advanced. Both should
     // be inlined (Standard via getStandardProgram, Advanced via getAdvancedProgram), and
