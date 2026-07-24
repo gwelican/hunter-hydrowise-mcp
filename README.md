@@ -13,6 +13,9 @@ Speaks **Streamable HTTP** transport per MCP spec revision 2025-11-25. Hosts a s
 "Switch the Lawn program to Wed + Sat for the new drought rules."
 "Increase Patio Hill's soak time — too much runoff."
 "Show me how much water we used last July, by zone."
+"Run the Lawn program now — there's a freeze coming tonight."
+"What has the controller reported since yesterday? Anything skipped?"
+"Which weather station are my triggers reading from, and how far away is it?"
 "Back up the controller and save it locally."
 "Restore from this morning's snapshot — last night's change broke things."
 ```
