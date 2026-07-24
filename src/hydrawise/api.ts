@@ -26,6 +26,7 @@ import {
   DELETE_ZONE_NOTE_MUTATION,
   HIBERNATE_CONTROLLER_MUTATION,
   ME_QUERY,
+  CONDITIONAL_WATERING_ADJUSTMENTS_QUERY,
   PROGRAM_START_TIMES_QUERY,
   PROGRAMS_FULL_QUERY,
   PROGRAMS_QUERY,
@@ -99,6 +100,7 @@ import {
   type SensorUpdatePayload,
   type SetBaselineValuesPayload,
   type StandardProgramRead,
+  type WateringProgramAdjustmentRead,
   type StandardProgramWritable,
   type StatusCodeAndSummary,
   type User,
@@ -405,6 +407,40 @@ export class HydrawiseApi {
       (p) => p.id === programId && p.__typename === 'AdvancedProgram',
     );
     return found ?? null;
+  }
+
+  // Returns the conditional watering adjustments ATTACHED to a Standard program, with
+  // labels and the applicableSchedulingMethod detail that PROGRAMS_FULL_QUERY omits.
+  // Not an account-wide catalog — no such read path exists (scheduleAdjustmentIds is
+  // write-only in the schema; see CONDITIONAL_WATERING_ADJUSTMENTS_QUERY doc comment).
+  // Null when programId doesn't resolve to a StandardProgram on this controller
+  // (missing id or an AdvancedProgram) — same convention as getStandardProgram.
+  // Controller-not-found still throws HydrawiseNotFoundError.
+  async getConditionalWateringAdjustments(
+    controllerId: number,
+    programId: number,
+  ): Promise<WateringProgramAdjustmentRead[] | null> {
+    const data = await this.client.query<{
+      controller: {
+        programs:
+          | {
+              __typename: string;
+              id: number;
+              conditionalWateringAdjustments?: WateringProgramAdjustmentRead[] | null;
+            }[]
+          | null;
+      } | null;
+    }>(CONDITIONAL_WATERING_ADJUSTMENTS_QUERY, { controllerId });
+    if (!data.controller) {
+      throw new HydrawiseNotFoundError(`controller ${controllerId} not found`);
+    }
+    const found = (data.controller.programs ?? []).find(
+      (p) => p.id === programId && p.__typename === 'StandardProgram',
+    );
+    if (!found) return null;
+    // Defensive `?? []` on a schema-declared non-null array — same `!`-violation
+    // gotcha handled throughout the serializers.
+    return found.conditionalWateringAdjustments ?? [];
   }
 
   async getPrograms(controllerId: number, includeZoneSpecific = true): Promise<ProgramListEntry[]> {

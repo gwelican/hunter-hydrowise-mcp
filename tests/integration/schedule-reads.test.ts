@@ -287,3 +287,53 @@ describe('get_controller_schedule integration', () => {
     expect(resp.result?.content[0]?.text).toMatch(/^config_error:/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// list_watering_adjustments
+// ---------------------------------------------------------------------------
+
+describe('list_watering_adjustments', () => {
+  it('returns the serialized adjustments for a Standard program', async () => {
+    const app = makeApp({
+      getConditionalWateringAdjustments: async () => [
+        { id: 7, label: 'Water more often when hot', applicableSchedulingMethod: { value: 3, label: 'Virtual Solar Sync' } },
+        { id: 11, label: '0.3in+ rainfall last day', applicableSchedulingMethod: { value: null, label: null } },
+      ],
+    });
+    const resp = await callTool(app, 'list_watering_adjustments', {
+      controller_id: 317416,
+      program_id: 8675639,
+    });
+    expect(resp.result?.isError).toBeFalsy();
+    const out = JSON.parse(resp.result!.content[0]!.text) as Array<Record<string, unknown>>;
+    expect(out).toEqual([
+      { id: 7, label: 'Water more often when hot', applicable_scheduling_method: { value: 3, label: 'Virtual Solar Sync' } },
+      { id: 11, label: '0.3in+ rainfall last day', applicable_scheduling_method: { value: null, label: null } },
+    ]);
+  });
+
+  it('returns config_error when the program is not a Standard program (api returns null)', async () => {
+    const app = makeApp({ getConditionalWateringAdjustments: async () => null });
+    const resp = await callTool(app, 'list_watering_adjustments', {
+      controller_id: 317416,
+      program_id: 999,
+    });
+    expect(resp.result?.isError).toBe(true);
+    expect(resp.result?.content[0]?.text).toMatch(/^config_error:/);
+    expect(resp.result?.content[0]?.text).toContain('Standard program');
+  });
+
+  it('returns api_error when the Hydrawise query fails', async () => {
+    const app = makeApp({
+      getConditionalWateringAdjustments: async () => {
+        throw new HydrawiseAPIError('upstream failure');
+      },
+    });
+    const resp = await callTool(app, 'list_watering_adjustments', {
+      controller_id: 317416,
+      program_id: 8675639,
+    });
+    expect(resp.result?.isError).toBe(true);
+    expect(resp.result?.content[0]?.text).toMatch(/^api_error:/);
+  });
+});

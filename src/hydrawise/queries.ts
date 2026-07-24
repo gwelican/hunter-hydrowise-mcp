@@ -980,6 +980,47 @@ export interface AdvancedProgramRead {
   runTimeGroup: { id: number; name: string | null; duration: number } | null;
 }
 
+/** GraphQL: a Standard program's conditional watering adjustments, with the
+ * applicableSchedulingMethod detail that PROGRAMS_FULL_QUERY intentionally omits
+ * (adding it there would bloat every get_program/snapshot fetch for a field only
+ * the list_watering_adjustments tool needs).
+ *
+ * Semantics (verified live on two accounts, 2026-07-24; see also issue #11's
+ * clear-then-read experiment): the field returns the adjustments currently
+ * ATTACHED to the program — not an account-wide catalog of available
+ * adjustments. No catalog read path exists; `scheduleAdjustmentIds` itself is
+ * write-only in the schema. `isContractor` only switches the label wording
+ * (false → account-parameterized labels like "0.3in+ rainfall last day";
+ * true → generic contractor labels like "High rainfall last day"). We pass
+ * false — end-user MCP sessions want the parameterized labels. */
+export const CONDITIONAL_WATERING_ADJUSTMENTS_QUERY = /* GraphQL */ `
+  query ConditionalWateringAdjustments($controllerId: Int!) {
+    controller(controllerId: $controllerId) {
+      programs(includeZoneSpecific: false) {
+        __typename
+        id
+        ... on StandardProgram {
+          conditionalWateringAdjustments(controllerId: $controllerId, isContractor: false) {
+            id
+            label
+            applicableSchedulingMethod {
+              value
+              label
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export interface WateringProgramAdjustmentRead {
+  id: number;
+  label: string;
+  // Non-null wrapper per live introspection; inner value/label genuinely nullable.
+  applicableSchedulingMethod: { value: number | null; label: string | null };
+}
+
 /** GraphQL: program start times via wateringSettings on a zone (best available read path). */
 export const PROGRAM_START_TIMES_QUERY = /* GraphQL */ `
   query ProgramStartTimes($zoneId: Int!) {
