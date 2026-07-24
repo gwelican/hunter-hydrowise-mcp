@@ -181,7 +181,13 @@ export function buildAppWithSessions(
 
 export async function main(): Promise<void> {
   if (process.stdin.isTTY && existsSync('.env')) {
-    loadDotenv();
+    // quiet: true suppresses the banner dotenv >=17 prints to STDOUT
+    // ("◇ injected env (6) from .env // tip: ..."). Everything this server emits
+    // goes to stderr by design (see logger.ts), and announcing how many vars were
+    // injected is chatter we do not want near credential handling. Production is
+    // unaffected either way — this branch only runs under a TTY — but `npm run dev`
+    // would print it.
+    loadDotenv({ quiet: true });
   }
 
   let cfg: Config;
