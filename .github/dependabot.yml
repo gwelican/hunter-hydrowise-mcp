@@ -28,9 +28,12 @@ updates:
       timezone: "America/Denver"
     open-pull-requests-limit: 5
     commit-message:
+      # No `include: "scope"` here — Dependabot appends the scope itself, which
+      # combined with these prefixes produced doubled titles like
+      # "chore(deps-dev)(deps-dev): bump eslint ...". The prefixes already carry
+      # the scope.
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
-      include: "scope"
     # Batch the low-risk churn into two PRs; majors stay individual so each one
     # gets its own review. Majors here are real migrations, not rubber-stamp
     # merges — the MCP SDK v1→v2 split is the live example (see CLAUDE.md), and
