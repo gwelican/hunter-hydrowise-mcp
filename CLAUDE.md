@@ -106,6 +106,10 @@ src/
     reporting.ts       read-only reporting tools (watering report, run history, run summary)
     schedule-reads.ts  upcoming schedule tools (get_zone_scheduled_runs, get_zone_next_run, get_controller_schedule)
     sensors.ts         irrigation-sensors capability — read tools + PHYSICAL ACTION sensor + custom-sensor-type CRUD
+    controllerConfig.ts controller-level config — location, master valve, program mode, hibernate, expanders, zone CRUD, weather stations
+    notes.ts           controller + zone notes CRUD (subscription-gated upstream)
+    events.ts          controller event log reads + acknowledge — PHYSICAL ACTION writes
+    restoreRecipe.ts   builds _restore_recipe + _caveats for dump_controller_snapshot
 tests/
   setup.ts             global vitest setup
   unit/                vitest unit tests
@@ -128,9 +132,7 @@ openspec/              spec-driven workflow artifacts (proposals, designs, tasks
 
 ### Control — `src/tools/control.ts` (PHYSICAL ACTION)
 - `start_zone`, `stop_zone`, `start_all_zones`, `stop_all_zones`
-- `list_weather_stations`, `add_weather_station`, `add_virtual_weather_station`, `remove_weather_station` — the weather source behind the watering triggers. Mutations return bare Boolean, so failures map to mutation_error explicitly. Observed live: `add_virtual_weather_station` returns true without attaching anything when the account's station slot is already full, so re-read the list to confirm.
 - `run_program`, `run_program_start_time`, `run_selected_zones`, `cancel_zone_runs` — program-level run control. `mark_run_as_scheduled` is required on the two program tools (the mutation declares it non-null). Duration overrides are sent as seconds, verified on a live controller 2026-07-24: `customDuration: 60` produced a 1-minute run, and a program run queues its zones sequentially rather than concurrently. `cancel_zone_runs` clears queued runs too, unlike `stop_zone`.
-- `list_controller_events`, `list_controller_alert_events`, `acknowledge_event`, `acknowledge_all_events` — the controller event log. Note `Controller.alerts` is typed `[Event!]!` upstream: it returns alert-flagged events, not alert configuration, which is why the tool is named for events. `Event.id` is a String, so `acknowledge_event` takes a string id.
 - `suspend_zone`, `resume_zone`, `suspend_all_zones`, `resume_all_zones`
 
 ### Scheduling — `src/tools/scheduling.ts` (reads + PHYSICAL ACTION writes)
@@ -165,6 +167,12 @@ openspec/              spec-driven workflow artifacts (proposals, designs, tasks
 - `hibernate_controller`, `wake_controller`
 - `create_expander`, `update_expander`, `delete_expander`
 - `create_zone`, `delete_zone` — wraps `createZoneAdvanced` / `deleteZone`. The deprecated `createZone` (Int cycleSoakEnable / runNextAvailableStartTime) is intentionally not wrapped.
+- `list_weather_stations`, `add_weather_station`, `add_virtual_weather_station`, `remove_weather_station` — the weather source behind the watering triggers. Mutations return bare Boolean, so failures map to mutation_error explicitly. Observed live: `add_virtual_weather_station` returns true without attaching anything when the account's station slot is already full, so re-read the list to confirm.
+
+### Events — `src/tools/events.ts` (reads + PHYSICAL ACTION writes)
+- `list_controller_events`, `list_controller_alert_events`, `acknowledge_event`, `acknowledge_all_events` — the controller event log. Note `Controller.alerts` is typed `[Event!]!` upstream: it returns alert-flagged events, not alert configuration, which is why the tool is named for events. `Event.id` is a String, so `acknowledge_event` takes a string id.
+- `list_controller_events` is the log to reach for when a scheduled run did not happen — it carries the controller's own account of connectivity drops, sensor state changes, and skipped irrigation, which the watering report does not show.
+- Null handling differs by field on purpose, and each side has its own test so a later cleanup does not "make them consistent" in the wrong direction: `Controller.alerts` is `[Event!]!` (list AND elements non-null), so a null array or a null entry is an upstream contract violation and raises `api_error`; `Controller.events` is `[Event]` with nullable elements, so nulls there are filtered and a null array is an empty result.
 
 ### Notes — `src/tools/notes.ts` (reads + PHYSICAL ACTION writes)
 - `list_controller_notes`, `list_zone_notes`
