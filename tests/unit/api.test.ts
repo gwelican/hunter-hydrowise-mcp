@@ -729,13 +729,34 @@ describe('HydrawiseApi — conditional watering adjustments', () => {
     expect(await api.getConditionalWateringAdjustments(317416, 8675639)).toEqual([]);
   });
 
-  it('returns null when the id exists but is an AdvancedProgram (wrong type)', async () => {
+  it('returns the adjustments when the id resolves to an AdvancedProgram (field is on the Program interface)', async () => {
     const harness = fakeQueryClient();
     harness.setNextResult({
-      controller: { programs: [{ __typename: 'AdvancedProgram', id: 8675639 }] },
+      controller: {
+        programs: [{ __typename: 'AdvancedProgram', id: 8675639, conditionalWateringAdjustments: adjustments }],
+      },
     });
     const api = new HydrawiseApi(harness.client);
-    expect(await api.getConditionalWateringAdjustments(317416, 8675639)).toBeNull();
+    expect(await api.getConditionalWateringAdjustments(317416, 8675639)).toEqual(adjustments);
+  });
+
+  it('getWateringAdjustmentCatalog dispatches the configuration catalog query and filters null entries', async () => {
+    const harness = fakeQueryClient();
+    harness.setNextResult({
+      configuration: { controllerWateringProgramAdjustments: [adjustments[0], null, adjustments[1]] },
+    });
+    const api = new HydrawiseApi(harness.client);
+    const out = await api.getWateringAdjustmentCatalog(317416);
+    expect(harness.calls[0]?.document).toContain('controllerWateringProgramAdjustments');
+    expect(harness.calls[0]?.variables).toEqual({ controllerId: 317416 });
+    expect(out).toEqual(adjustments);
+  });
+
+  it('getWateringAdjustmentCatalog returns [] when configuration is null', async () => {
+    const harness = fakeQueryClient();
+    harness.setNextResult({ configuration: null });
+    const api = new HydrawiseApi(harness.client);
+    expect(await api.getWateringAdjustmentCatalog(317416)).toEqual([]);
   });
 
   it('returns null when no matching id exists', async () => {

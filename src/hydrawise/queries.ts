@@ -980,19 +980,22 @@ export interface AdvancedProgramRead {
   runTimeGroup: { id: number; name: string | null; duration: number } | null;
 }
 
-/** GraphQL: a Standard program's conditional watering adjustments, with the
+/** GraphQL: a program's conditional watering adjustments, with the
  * applicableSchedulingMethod detail that PROGRAMS_FULL_QUERY intentionally omits
  * (adding it there would bloat every get_program/snapshot fetch for a field only
  * the list_watering_adjustments tool needs).
  *
  * Semantics (verified live on two accounts, 2026-07-24; see also issue #11's
- * clear-then-read experiment): the field returns the adjustments currently
- * ATTACHED to the program — not an account-wide catalog of available
- * adjustments. No catalog read path exists; `scheduleAdjustmentIds` itself is
- * write-only in the schema. `isContractor` only switches the label wording
- * (false → account-parameterized labels like "0.3in+ rainfall last day";
- * true → generic contractor labels like "High rainfall last day"). We pass
- * false — end-user MCP sessions want the parameterized labels. */
+ * clear-then-read experiment): this per-program field returns the adjustments
+ * currently ATTACHED to the program. The account-wide catalog of AVAILABLE
+ * adjustments lives at Configuration.controllerWateringProgramAdjustments —
+ * see CONTROLLER_WATERING_ADJUSTMENT_CATALOG_QUERY. `scheduleAdjustmentIds`
+ * itself remains write-only. The field is declared on the Program interface,
+ * so both Standard and Advanced programs expose it. `isContractor` only
+ * switches label wording (false → account-parameterized labels like
+ * "0.3in+ rainfall last day"; true → generic contractor labels like
+ * "High rainfall last day"). We pass false — end-user MCP sessions want the
+ * parameterized labels. */
 export const CONDITIONAL_WATERING_ADJUSTMENTS_QUERY = /* GraphQL */ `
   query ConditionalWateringAdjustments($controllerId: Int!) {
     controller(controllerId: $controllerId) {
@@ -1008,6 +1011,38 @@ export const CONDITIONAL_WATERING_ADJUSTMENTS_QUERY = /* GraphQL */ `
               label
             }
           }
+        }
+        ... on AdvancedProgram {
+          conditionalWateringAdjustments(controllerId: $controllerId, isContractor: false) {
+            id
+            label
+            applicableSchedulingMethod {
+              value
+              label
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** GraphQL: the account-wide catalog of watering-program adjustments available
+ * on a controller (Configuration.controllerWateringProgramAdjustments). Verified
+ * live 2026-07-24: returns a strict superset of any program's attached set —
+ * e.g. entries for other scheduling methods that no program currently uses.
+ * Note ids are per-method even when labels repeat (the same label can appear
+ * under Time Based and Virtual Solar Sync with different ids), so restore
+ * verification should compare id + label + applicable_scheduling_method. */
+export const CONTROLLER_WATERING_ADJUSTMENT_CATALOG_QUERY = /* GraphQL */ `
+  query ControllerWateringAdjustmentCatalog($controllerId: Int!) {
+    configuration {
+      controllerWateringProgramAdjustments(controllerId: $controllerId, isContractor: false) {
+        id
+        label
+        applicableSchedulingMethod {
+          value
+          label
         }
       }
     }

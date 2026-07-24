@@ -406,22 +406,34 @@ export function registerSchedulingTools(
     'list_watering_adjustments',
     {
       description:
-        "List the conditional watering adjustments ATTACHED to a Standard program — the account-managed suspend/boost rules (e.g. \"Wind above 25mph\", \"0.3in+ rainfall last day\") behind the opaque integer schedule_adjustment_ids. Returns [{id, label, applicable_scheduling_method}]. Use it to interpret a program's schedule_adjustment_ids, to verify ids before writing them, and to compare capture-time vs restore-time meanings when applying a snapshot (ids are account-scoped and can be redefined). Note: this is NOT an account-wide catalog of available adjustments — the Hydrawise schema exposes no such read (scheduleAdjustmentIds is write-only); it reflects what is currently attached. program_id must reference a Standard program. Read-only.",
+        "List the account-managed conditional watering adjustments (suspend/boost rules like \"Wind above 25mph\", \"0.3in+ rainfall last day\") behind the opaque integer schedule_adjustment_ids. Always returns `catalog`: the controller's full catalog of AVAILABLE adjustments. With optional `program_id` (Standard or Advanced), additionally returns `attached`: the adjustments currently attached to that program. Use it to interpret schedule_adjustment_ids, to verify ids before writing them, and to compare capture-time vs restore-time meanings when applying a snapshot — ids are account-scoped and can be redefined, and the same label can appear under different ids for different scheduling methods, so compare id + label + applicable_scheduling_method together. Read-only.",
       inputSchema: {
         controller_id: z.number().int(),
-        program_id: z.number().int(),
+        program_id: z.number().int().optional(),
       },
     },
     async ({ controller_id, program_id }) =>
       wrap('list_watering_adjustments', async () => {
-        const adjustments = await api.getConditionalWateringAdjustments(controller_id, program_id);
-        if (!adjustments) {
+        const catalog = await api.getWateringAdjustmentCatalog(controller_id);
+        if (program_id === undefined) {
+          return jsonResult({
+            controller_id,
+            catalog: catalog.map(serializeWateringAdjustment),
+            attached: null,
+          });
+        }
+        const attached = await api.getConditionalWateringAdjustments(controller_id, program_id);
+        if (!attached) {
           throw new ConfigError(
-            `program ${program_id} on controller ${controller_id} is not a Standard program ` +
-              '(or does not exist) — list_watering_adjustments requires a Standard program',
+            `program ${program_id} not found on controller ${controller_id}`,
           );
         }
-        return jsonResult(adjustments.map(serializeWateringAdjustment));
+        return jsonResult({
+          controller_id,
+          program_id,
+          catalog: catalog.map(serializeWateringAdjustment),
+          attached: attached.map(serializeWateringAdjustment),
+        });
       }),
   );
 

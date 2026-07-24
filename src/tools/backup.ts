@@ -13,6 +13,7 @@ import {
   serializeSensorZoneRefsForZone,
   serializeStandardProgram,
   serializeUser,
+  serializeWateringAdjustment,
   serializeWateringTriggers,
   serializeZone,
   serializeZoneSettings,
@@ -44,9 +45,11 @@ import { jsonResult, runTool } from './_helpers.js';
 //   v7: + hibernate_status, status_summary, status_icon, accumulated_water_savings in controller header
 //   v8: + accumulated_water_savings wrapped as {value, unit} (inferred from location.country)
 //   v9: + programs[].schedule_adjustments {id, label} pairs alongside the bare
-//       schedule_adjustment_ids (labels are the only handle a restore has for detecting
-//       that an account-managed adjustment id was redefined between capture and restore;
-//       see issue #11) (this version)
+//       schedule_adjustment_ids, and controller.watering_adjustment_catalog (the
+//       account-wide catalog from Configuration.controllerWateringProgramAdjustments).
+//       Labels + catalog are the handles a restore has for detecting that an
+//       account-managed adjustment id was redefined between capture and restore;
+//       see issue #11 (this version)
 export const SNAPSHOT_VERSION = 9;
 const PACKAGE_VERSION = '0.3.0';
 
@@ -72,6 +75,7 @@ export interface ControllerSnapshotV9 {
     watering_triggers: Record<string, unknown> | null;
     sensors: Array<Record<string, unknown>>;
     advanced_programs: Array<Record<string, unknown>>;
+    watering_adjustment_catalog: Array<Record<string, unknown>>;
     controller_notes: Array<Record<string, unknown>>;
   };
   _restore_recipe: RestoreStep[];
@@ -153,6 +157,7 @@ export function registerBackupTools(server: McpServer, api: HydrawiseApi, logger
             controllerSensors,
             controllerNotes,
             zoneNotesByZone,
+            adjustmentCatalog,
           ] = await Promise.all([
             Promise.all(
               zones.map(async (z) => ({ zone_id: z.id, settings: await api.getZoneFull(z.id) })),
@@ -181,6 +186,9 @@ export function registerBackupTools(server: McpServer, api: HydrawiseApi, logger
                 notes: await fetchZoneNotesSafe(api, z.id, logger),
               })),
             ),
+            // Account-wide adjustment catalog (v9) - lets a restore compare capture-time
+            // id/label/method against the live catalog (see _caveats).
+            api.getWateringAdjustmentCatalog(controller_id),
           ]);
 
           // Inline full program details — dispatch on program_type. Standard programs use
@@ -284,6 +292,7 @@ export function registerBackupTools(server: McpServer, api: HydrawiseApi, logger
               // on ADVANCED-mode. Always emitted (not omitted) so consumers can rely on the
               // key existing — convention matches sensors[] above.
               advanced_programs: advancedProgramsInlined,
+              watering_adjustment_catalog: adjustmentCatalog.map(serializeWateringAdjustment),
             },
           };
 

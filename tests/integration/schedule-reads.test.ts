@@ -293,39 +293,68 @@ describe('get_controller_schedule integration', () => {
 // ---------------------------------------------------------------------------
 
 describe('list_watering_adjustments', () => {
-  it('returns the serialized adjustments for a Standard program', async () => {
+  const catalogRead = [
+    { id: 7, label: 'Water more often when hot', applicableSchedulingMethod: { value: 0, label: 'Time Based' } },
+    { id: 19, label: '0.3in+ rainfall last day', applicableSchedulingMethod: { value: 3, label: 'Virtual Solar Sync' } },
+  ];
+  const attachedRead = [
+    { id: 7, label: 'Water more often when hot', applicableSchedulingMethod: { value: 0, label: 'Time Based' } },
+  ];
+  const catalogOut = [
+    { id: 7, label: 'Water more often when hot', applicable_scheduling_method: { value: 0, label: 'Time Based' } },
+    { id: 19, label: '0.3in+ rainfall last day', applicable_scheduling_method: { value: 3, label: 'Virtual Solar Sync' } },
+  ];
+
+  it('returns catalog + attached for a program (Standard or Advanced)', async () => {
     const app = makeApp({
-      getConditionalWateringAdjustments: async () => [
-        { id: 7, label: 'Water more often when hot', applicableSchedulingMethod: { value: 3, label: 'Virtual Solar Sync' } },
-        { id: 11, label: '0.3in+ rainfall last day', applicableSchedulingMethod: { value: null, label: null } },
-      ],
+      getWateringAdjustmentCatalog: async () => catalogRead,
+      getConditionalWateringAdjustments: async () => attachedRead,
     });
     const resp = await callTool(app, 'list_watering_adjustments', {
       controller_id: 317416,
       program_id: 8675639,
     });
     expect(resp.result?.isError).toBeFalsy();
-    const out = JSON.parse(resp.result!.content[0]!.text) as Array<Record<string, unknown>>;
-    expect(out).toEqual([
-      { id: 7, label: 'Water more often when hot', applicable_scheduling_method: { value: 3, label: 'Virtual Solar Sync' } },
-      { id: 11, label: '0.3in+ rainfall last day', applicable_scheduling_method: { value: null, label: null } },
-    ]);
+    const out = JSON.parse(resp.result!.content[0]!.text) as Record<string, unknown>;
+    expect(out.catalog).toEqual(catalogOut);
+    expect(out.attached).toEqual([catalogOut[0]]);
+    expect(out.program_id).toBe(8675639);
   });
 
-  it('returns config_error when the program is not a Standard program (api returns null)', async () => {
-    const app = makeApp({ getConditionalWateringAdjustments: async () => null });
+  it('returns catalog with attached: null when program_id is omitted', async () => {
+    let attachedCalled = false;
+    const app = makeApp({
+      getWateringAdjustmentCatalog: async () => catalogRead,
+      getConditionalWateringAdjustments: async () => {
+        attachedCalled = true;
+        return [];
+      },
+    });
+    const resp = await callTool(app, 'list_watering_adjustments', { controller_id: 317416 });
+    expect(resp.result?.isError).toBeFalsy();
+    const out = JSON.parse(resp.result!.content[0]!.text) as Record<string, unknown>;
+    expect(out.catalog).toEqual(catalogOut);
+    expect(out.attached).toBeNull();
+    expect(attachedCalled).toBe(false);
+  });
+
+  it('returns config_error when program_id does not exist on the controller', async () => {
+    const app = makeApp({
+      getWateringAdjustmentCatalog: async () => catalogRead,
+      getConditionalWateringAdjustments: async () => null,
+    });
     const resp = await callTool(app, 'list_watering_adjustments', {
       controller_id: 317416,
       program_id: 999,
     });
     expect(resp.result?.isError).toBe(true);
     expect(resp.result?.content[0]?.text).toMatch(/^config_error:/);
-    expect(resp.result?.content[0]?.text).toContain('Standard program');
+    expect(resp.result?.content[0]?.text).toContain('not found');
   });
 
   it('returns api_error when the Hydrawise query fails', async () => {
     const app = makeApp({
-      getConditionalWateringAdjustments: async () => {
+      getWateringAdjustmentCatalog: async () => {
         throw new HydrawiseAPIError('upstream failure');
       },
     });

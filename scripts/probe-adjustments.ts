@@ -115,7 +115,7 @@ async function main() {
       }
     }
     if (!any) {
-      console.log('No Standard programs on this controller (the field only exists on StandardProgram).');
+      console.log('No Standard programs on this controller.');
     }
     console.log(
       '\nThese are the adjustments currently ATTACHED per program (not an account catalog).',

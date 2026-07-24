@@ -149,6 +149,8 @@ export interface SnapshotForRecipe {
     sensors: SnapshotSensor[];
     advanced_programs: Array<Record<string, unknown>>;
     controller_notes: SnapshotNote[];
+    // v9: account-wide adjustment catalog captured at snapshot time (optional for pre-v9).
+    watering_adjustment_catalog?: Array<{ id: number; label: string }>;
   };
 }
 
@@ -211,7 +213,7 @@ export function buildRestoreCaveats(snapshot: SnapshotForRecipe): string[] {
       .sort((a, b) => a - b)
       .join(', ');
     caveats.push(
-      `Snapshot references reusable schedule_adjustment_ids: [${idList}] (on zones and/or Standard programs). These are account-managed with no exposed CRUD, and the ids are opaque: an id that was removed makes the restore fail loudly, but an id whose definition CHANGED since capture restores silently wrong behavior. Programs in this snapshot carry schedule_adjustments {id, label} pairs — before applying, call list_watering_adjustments on the target program and compare labels against the snapshot's; investigate any mismatch before restoring.`,
+      `Snapshot references reusable schedule_adjustment_ids: [${idList}] (on zones and/or Standard programs). These are account-managed with no exposed CRUD, and the ids are opaque: an id that was removed makes the restore fail loudly, but an id whose definition CHANGED since capture restores silently wrong behavior. Programs in this snapshot carry schedule_adjustments {id, label} pairs and the controller carries watering_adjustment_catalog — before applying, call list_watering_adjustments on the target controller and compare id + label + applicable_scheduling_method against the snapshot's (the same label can appear under different ids for different scheduling methods); investigate any mismatch before restoring.`,
     );
   }
 
