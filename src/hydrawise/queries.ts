@@ -991,7 +991,11 @@ export interface AdvancedProgramRead {
  * adjustments lives at Configuration.controllerWateringProgramAdjustments —
  * see CONTROLLER_WATERING_ADJUSTMENT_CATALOG_QUERY. `scheduleAdjustmentIds`
  * itself remains write-only. The field is declared on the Program interface,
- * so both Standard and Advanced programs expose it. `isContractor` only
+ * so both Standard and Advanced programs expose it — it is therefore selected
+ * directly on the interface rather than duplicated into `... on StandardProgram`
+ * / `... on AdvancedProgram` fragments. Do NOT reintroduce those fragments: they
+ * would silently return no adjustments for any future Program implementation,
+ * whereas the interface selection picks it up automatically. `isContractor` only
  * switches label wording (false → account-parameterized labels like
  * "0.3in+ rainfall last day"; true → generic contractor labels like
  * "High rainfall last day"). We pass false — end-user MCP sessions want the
@@ -1002,24 +1006,12 @@ export const CONDITIONAL_WATERING_ADJUSTMENTS_QUERY = /* GraphQL */ `
       programs(includeZoneSpecific: true) {
         __typename
         id
-        ... on StandardProgram {
-          conditionalWateringAdjustments(controllerId: $controllerId, isContractor: false) {
-            id
+        conditionalWateringAdjustments(controllerId: $controllerId, isContractor: false) {
+          id
+          label
+          applicableSchedulingMethod {
+            value
             label
-            applicableSchedulingMethod {
-              value
-              label
-            }
-          }
-        }
-        ... on AdvancedProgram {
-          conditionalWateringAdjustments(controllerId: $controllerId, isContractor: false) {
-            id
-            label
-            applicableSchedulingMethod {
-              value
-              label
-            }
           }
         }
       }
