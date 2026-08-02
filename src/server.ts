@@ -9,7 +9,6 @@ import { loadConfig, type Config } from './config.js';
 import { Auth } from './hydrawise/auth.js';
 import { HydrawiseApi } from './hydrawise/api.js';
 import { getClient } from './hydrawise/client.js';
-import { bearerGuard, hostGuard, originGuard } from './http/middleware.js';
 import { SessionRegistry } from './http/sessions.js';
 import { createLogger, type Logger } from './logger.js';
 import { registerBackupTools } from './tools/backup.js';
@@ -67,9 +66,6 @@ export function buildAppWithSessions(
 ): BuildAppHandle {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
-  app.use(originGuard(cfg.allowedOrigins, logger));
-  app.use(hostGuard(cfg.host, cfg.port, logger));
-  app.use(bearerGuard(cfg.authToken, logger));
 
   const sessions = new SessionRegistry(cfg.sessionTtlSeconds * 1000, logger);
 

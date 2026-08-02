@@ -2,8 +2,6 @@ import { z } from 'zod';
 import { ConfigError } from './errors.js';
 import type { LogLevel } from './logger.js';
 
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
-
 const RawSchema = z.object({
   HYDRAWISE_USERNAME: z.string().min(1, 'HYDRAWISE_USERNAME is required'),
   HYDRAWISE_PASSWORD: z.string().min(1, 'HYDRAWISE_PASSWORD is required'),
@@ -22,8 +20,6 @@ const RawSchema = z.object({
       }
       return n;
     }),
-  HYDRAWISE_MCP_ALLOWED_ORIGINS: z.string().optional(),
-  HYDRAWISE_MCP_AUTH_TOKEN: z.string().min(1).optional(),
   HYDRAWISE_MCP_SESSION_TTL: z
     .string()
     .default('3600')
@@ -48,15 +44,10 @@ export interface Config {
   password: string;
   host: string;
   port: number;
-  allowedOrigins: string[] | null;
-  authToken: string | null;
   sessionTtlSeconds: number;
   logLevel: LogLevel;
 }
 
-export function isLoopbackHost(host: string): boolean {
-  return LOOPBACK_HOSTS.has(host);
-}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const filtered: Record<string, string | undefined> = {};
@@ -77,28 +68,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError(message);
   }
   const raw = parsed.data;
-
   const host = raw.HYDRAWISE_MCP_HOST;
-  const authToken = raw.HYDRAWISE_MCP_AUTH_TOKEN ?? null;
-  if (!isLoopbackHost(host) && !authToken) {
-    throw new ConfigError(
-      `HYDRAWISE_MCP_HOST is non-loopback (${host}); set HYDRAWISE_MCP_AUTH_TOKEN to enable client authentication`,
-    );
-  }
-
-  const allowedOrigins = raw.HYDRAWISE_MCP_ALLOWED_ORIGINS
-    ? raw.HYDRAWISE_MCP_ALLOWED_ORIGINS.split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-    : null;
 
   return {
     username: raw.HYDRAWISE_USERNAME,
     password: raw.HYDRAWISE_PASSWORD,
     host,
     port: raw.HYDRAWISE_MCP_PORT,
-    allowedOrigins,
-    authToken,
     sessionTtlSeconds: raw.HYDRAWISE_MCP_SESSION_TTL,
     logLevel: raw.HYDRAWISE_LOG_LEVEL,
   };

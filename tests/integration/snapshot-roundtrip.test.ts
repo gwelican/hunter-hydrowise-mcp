@@ -53,8 +53,6 @@ function makeConfig(): Config {
     password: 'sekret',
     host: '127.0.0.1',
     port: 8765,
-    allowedOrigins: null,
-    authToken: null,
     sessionTtlSeconds: 60,
     logLevel: 'error',
   };

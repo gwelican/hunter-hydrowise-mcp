@@ -31,8 +31,6 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     password: 'sekret',
     host: '127.0.0.1',
     port: 8765,
-    allowedOrigins: null,
-    authToken: null,
     sessionTtlSeconds: 60,
     logLevel: 'error',
     ...overrides,
@@ -221,29 +219,21 @@ describe('streamable HTTP transport', () => {
     expect(res.status).toBe(404);
   });
 
-  it('rejects evil Origin with 403 + JSON-RPC error body', async () => {
+  it('accepts any Origin header', async () => {
     const app = makeApp();
-    const res = await initialize(app, { Origin: 'https://evil.example.com' });
-    expect(res.status).toBe(403);
-    expect(res.body).toMatchObject({ jsonrpc: '2.0', id: null });
-    expect(res.body.error).toBeDefined();
-  });
-
-  it('allows a loopback Origin', async () => {
-    const app = makeApp();
-    const res = await initialize(app, { Origin: 'http://127.0.0.1:8765' });
+    const res = await initialize(app, { Origin: 'https://example.com' });
     expect(res.status).toBe(200);
   });
 
-  it('rejects a Host header that does not match the bound interface', async () => {
+  it('accepts any Host header', async () => {
     const app = makeApp(makeConfig({ host: '127.0.0.1', port: 8765 }));
     const res = await request(app)
       .post('/mcp')
       .set('Accept', 'application/json, text/event-stream')
       .set('Content-Type', 'application/json')
-      .set('Host', 'evil.example.com')
+      .set('Host', 'example.com')
       .send(INITIALIZE_BODY);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it('every write tool description begins with PHYSICAL ACTION:', async () => {
@@ -300,17 +290,4 @@ describe('streamable HTTP transport', () => {
     expect(after.status).toBe(404);
   });
 
-  it('enforces bearer auth when configured', async () => {
-    const cfg = makeConfig({ authToken: 'sekret' });
-    const app = makeApp(cfg);
-
-    const noAuth = await initialize(app);
-    expect(noAuth.status).toBe(401);
-
-    const wrongAuth = await initialize(app, { Authorization: 'Bearer wrong' });
-    expect(wrongAuth.status).toBe(401);
-
-    const goodAuth = await initialize(app, { Authorization: 'Bearer sekret' });
-    expect(goodAuth.status).toBe(200);
-  });
 });
