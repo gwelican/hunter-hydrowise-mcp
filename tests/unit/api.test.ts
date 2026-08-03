@@ -177,19 +177,29 @@ describe('HydrawiseApi', () => {
     await expect(api.startZone(42)).rejects.toThrow(/Zone is already running/);
   });
 
-  it('getZones throws HydrawiseNotFoundError when controller is null', async () => {
+  it('getController filters controllers from the authenticated account', async () => {
     const harness = fakeClient();
-    harness.setQueryResult({ controller: null });
+    harness.setQueryResult({ me: { controllers: [{ id: 7, name: 'Garden' }, { id: 8, name: 'Back' }] } });
+    const api = new HydrawiseApi(harness.client);
+    const result = await api.getController(7);
+    expect(result).toMatchObject({ id: 7, name: 'Garden' });
+    expect(harness.queryCalls[0]?.variables).toBeUndefined();
+  });
+
+  it('getZones throws HydrawiseNotFoundError when controller is absent from me.controllers', async () => {
+    const harness = fakeClient();
+    harness.setQueryResult({ me: { controllers: [{ id: 8, zones: [] }] } });
     const api = new HydrawiseApi(harness.client);
     await expect(api.getZones(7)).rejects.toThrow(HydrawiseNotFoundError);
   });
 
-  it('getZones returns an empty array when controller exists but has no zones', async () => {
+  it('getZones returns an empty array when matching controller has no zones', async () => {
     const harness = fakeClient();
-    harness.setQueryResult({ controller: { zones: null } });
+    harness.setQueryResult({ me: { controllers: [{ id: 7, zones: null }] } });
     const api = new HydrawiseApi(harness.client);
     const result = await api.getZones(7);
     expect(result).toEqual([]);
+    expect(harness.queryCalls[0]?.variables).toBeUndefined();
   });
 
   it('setBaselineValues maps fields to camelCase', async () => {

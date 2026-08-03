@@ -254,13 +254,16 @@ export const CONTROLLER_QUERY = /* GraphQL */ `
 
 // Bulk Controller.zones omits `status` — Zone.status.{lastRun,nextRun} are declared DateTime! but are null upstream, which 500s the bulk fan-out. Richer per-zone reads go through ZONE_FULL_QUERY (get_zone_settings).
 export const ZONES_QUERY = /* GraphQL */ `
-  query Zones($controllerId: Int!) {
-    controller(controllerId: $controllerId) {
-      zones {
+  query Zones {
+    me {
+      controllers {
         id
-        name
-        number {
-          value
+        zones {
+          id
+          name
+          number {
+            value
+          }
         }
       }
     }

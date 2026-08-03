@@ -228,24 +228,23 @@ export class HydrawiseApi {
   }
 
   async getController(controllerId: number): Promise<Controller> {
-    const data = await this.client.query<{ controller: Controller | null }>(CONTROLLER_QUERY, {
-      controllerId,
-    });
-    if (!data.controller) {
+    const controllers = await this.getControllers();
+    const controller = controllers.find((c) => c.id === controllerId);
+    if (!controller) {
       throw new HydrawiseNotFoundError(`controller ${controllerId} not found`);
     }
-    return data.controller;
+    return controller;
   }
 
   async getZones(controllerId: number): Promise<Zone[]> {
-    const data = await this.client.query<{ controller: { zones: Zone[] | null } | null }>(
+    const data = await this.client.query<{ me: { controllers: Array<{ id: number; zones: Zone[] | null }> | null } }>(
       ZONES_QUERY,
-      { controllerId },
     );
-    if (!data.controller) {
+    const controller = data.me.controllers?.find((c) => c.id === controllerId);
+    if (!controller) {
       throw new HydrawiseNotFoundError(`controller ${controllerId} not found`);
     }
-    return data.controller.zones ?? [];
+    return controller.zones ?? [];
   }
 
   async getZone(zoneId: number): Promise<Zone> {
