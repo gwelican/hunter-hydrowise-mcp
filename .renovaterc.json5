@@ -1,0 +1,51 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  dependencyDashboard: true,
+  dependencyDashboardTitle: "Renovate Dashboard 🤖",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor",
+    "helpers:pinGitHubActionDigests",
+    "github>gwelican/homelab//.renovate/autoMerge.json5",
+    "github>gwelican/homelab//.renovate/changelogs.json5",
+    "github>gwelican/homelab//.renovate/docker.json5",
+    "github>gwelican/homelab//.renovate/customManagers.json5",
+    "github>gwelican/homelab//.renovate/hermes-versioning.json5",
+    "github>gwelican/homelab//.renovate/hydrawise-versioning.json5",
+    "github>gwelican/homelab//.renovate/grafanaDashboards.json5",
+    "github>gwelican/homelab//.renovate/groups.json5",
+    "github>gwelican/homelab//.renovate/labels.json5",
+    "github>gwelican/homelab//.renovate/overrides.json5",
+    "github>gwelican/homelab//.renovate/semanticCommits.json5",
+    "github>gwelican/homelab//.renovate/packageRules.json5",
+    ":automergeBranch",
+    ":dependencyDashboard",
+    ":disableRateLimiting",
+    ":semanticCommits",
+    ":timezone(America/Los_Angeles)",
+  ],
+  flux: {
+    managerFilePatterns: [
+      "/\\.yaml(?:\\.j2)?$/",
+    ],
+  },
+  gitAuthor: "Peter Varsanyi <peter.varsanyi@gwelican.eu>",
+  "helm-values": {
+    managerFilePatterns: [
+      "/\\.yaml(?:\\.j2)?$/",
+    ],
+  },
+  ignorePaths: [
+    "**/*.sops.*",
+  ],
+  kubernetes: {
+    managerFilePatterns: [
+      "/\\.yaml(?:\\.j2)?$/",
+    ],
+  },
+  suppressNotifications: [
+    "prEditedNotification",
+    "prIgnoreNotification",
+  ],
+}
+
