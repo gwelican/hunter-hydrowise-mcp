@@ -17,7 +17,7 @@
     ":semanticCommits",
     ":timezone(America/Los_Angeles)",
   ],
-  gitAuthor: "Peter Varsanyi <peter.varsanyi@gwelican.eu>",
+  gitAuthor: "renovate[bot] <renovate@gwelican.eu>",
   ignorePaths: [
     "**/*.sops.*",
   ],
