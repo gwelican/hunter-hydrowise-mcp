@@ -14,15 +14,8 @@
     "github>gwelican/homelab//.renovate/groups.json5",
     "github>gwelican/homelab//.renovate/labels.json5",
     "github>gwelican/homelab//.renovate/packageRules.json5",
+    "github>gwelican/homelab//.renovate/common.json5",
     ":semanticCommits",
     ":timezone(America/Los_Angeles)",
-  ],
-  gitAuthor: "renovate[bot] <renovate@gwelican.eu>",
-  ignorePaths: [
-    "**/*.sops.*",
-  ],
-  suppressNotifications: [
-    "prEditedNotification",
-    "prIgnoreNotification",
   ],
 }
